@@ -12,6 +12,9 @@ import argparse
 import json
 import logging
 import os
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from typing import Generator, Optional, Union, Dict, List, Any
 
 import aiohttp
@@ -63,6 +66,9 @@ from fastchat.protocol.api_protocol import (
 )
 
 logger = logging.getLogger(__name__)
+LOG_FORMAT = "%(asctime)s - %(levelname)s: %(message)s"
+logger.setLevel(logging.INFO)
+logging.basicConfig(format=LOG_FORMAT)
 
 conv_template_map = {}
 
@@ -626,6 +632,7 @@ async def generate_completion_stream(payload: Dict[str, Any], worker_addr: str):
     controller_address = app_settings.controller_address
     async with httpx.AsyncClient() as client:
         delimiter = b"\0"
+        logger.info(payload)
         async with client.stream(
             "POST",
             worker_addr + "/worker_generate_stream",
@@ -641,6 +648,9 @@ async def generate_completion_stream(payload: Dict[str, Any], worker_addr: str):
                     chunk, buffer = buffer[:chunk_end], buffer[chunk_end + 1 :]
                     if not chunk:
                         continue
+                    chunk_rsp = json.loads(chunk.decode())
+                    if chunk_rsp["finish_reason"] != None:
+                        logger.info(json.loads(chunk.decode()))
                     yield json.loads(chunk.decode())
 
 
